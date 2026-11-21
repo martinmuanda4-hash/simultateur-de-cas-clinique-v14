@@ -1355,11 +1355,56 @@
     "dossierTitre": "Dossier de la patiente",
     "dossierVide": "Rien pour l'instant. Touchez le bouton en bas pour examiner la patiente ou demander un examen.",
     "boutonOuvrir": "Examiner ou demander",
-    "boutonFermer": "Fermer"
+    "boutonFermer": "Fermer",
+    "bilanIncomplet": "Il vous manque encore des examens prioritaires. Demandez-les, ou touchez de nouveau « Continuer » pour passer au diagnostic sans eux (ils seront indiqués au débriefing).",
+    "boutonContinuer": "Continuer"
   },
   "dictee": {
     "ecouter": "Dicter",
     "arreter": "Arrêter la dictée",
     "ecoute": "Je vous écoute…"
+  },
+  "dossier": {
+    "bouton": "Dossier du patient",
+    "fermer": "Fermer le dossier",
+    "titre": "Dossier clinique",
+    "patientDefaut": "Patient",
+    "meta": {
+      "lieu": "Lieu",
+      "motif": "Motif",
+      "score": "Score"
+    },
+    "sections": {
+      "identite": "Identité et contexte",
+      "symptomes": "Symptômes dominants",
+      "anamnese": "Anamnèse",
+      "examen": "Examen physique",
+      "bilan": "Bilan complémentaire"
+    },
+    "libelles": {
+      "identite": "Identité",
+      "provenance": "Arrivée",
+      "antecedents": "Antécédents",
+      "contexte": "Contexte",
+      "motif": "Motif de consultation",
+      "constantes": "Constantes",
+      "resultat": "Résultat",
+      "inutile": "Sans intérêt ici"
+    },
+    "vide": {
+      "symptomes": "Posez des questions à la famille : les symptômes importants s'inscriront ici.",
+      "anamnese": "Aucune information recueillie pour l'instant.",
+      "examen": "Aucun examen réalisé pour l'instant.",
+      "bilan": "Aucun examen demandé pour l'instant."
+    },
+    "carte": {
+      "titre": "Dossier de la patiente",
+      "ouvrir": "Ouvrir le dossier",
+      "anamnese": "Anamnèse",
+      "examen": "Examen",
+      "bilan": "Bilan",
+      "derniere": "Dernier résultat",
+      "vide": "Rien pour l'instant. Examinez la patiente ou demandez un examen avec le bouton en bas."
+    }
   }
 }

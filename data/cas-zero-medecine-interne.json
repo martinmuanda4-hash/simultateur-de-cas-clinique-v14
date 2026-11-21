@@ -22,6 +22,11 @@
       "contexte": "Contexte de la consultation",
       "motifConsultation": "Motif de consultation",
       "constantes": "Constantes"
+    },
+    "patient": {
+      "identite": "Femme, 29 ans",
+      "provenance": "Amenée aux urgences par sa famille",
+      "antecedents": "Aucun antécédent morbide connu"
     }
   },
   "etapes": {
