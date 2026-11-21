@@ -687,6 +687,155 @@ function createDictationButton(input, labels) {
   return button;
 }
 
+/* ------------------------------------------------------------------ */
+/* Patient file (dossier): everything found so far, on one clean page  */
+/* ------------------------------------------------------------------ */
+
+const DOSSIER_ICON = "M9 3h6l1 2h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zM12 9v6M9 12h6";
+
+/** Collects what the student has found so far (pure data, no DOM). */
+function collectDossier() {
+  const ui = state.ui;
+  const intro = state.caseData.introduction || {};
+  const run = state.run || {};
+  const data = { patient: intro.patient || {}, intro, anamnesis: [], symptoms: [], exam: [], workup: [] };
+
+  const session = run.anamnesis;
+  if (session) {
+    const rubrics = ui.anamnese.rubriques || [];
+    rubrics.forEach((rubric) => {
+      const rows = session.items.filter((item) => item.rubrique === rubric.id && item.revealed);
+      if (rows.length) data.anamnesis.push({ titre: rubric.titre, rows: rows.map((item) => ({ label: item.libelle, text: item.reponse })) });
+    });
+    data.symptoms = session.items.filter((item) => item.revealed && item.pertinence === "cle").map((item) => item.note || item.reponse);
+  }
+  if (run.exam) {
+    ui.examenPhysique.regions.forEach((region) => {
+      const rows = run.exam.items.filter((item) => item.done && item.region === region.id);
+      if (rows.length) data.exam.push({ titre: region.libelle, rows: rows.map((item) => ({ label: item.libelle, text: item.resultat })) });
+    });
+  }
+  const workup = run.workup;
+  if (workup) {
+    workup.priority.filter((entry) => entry.found).forEach((entry) => data.workup.push({ label: entry.libelle, text: entry.resultat, kind: "ok" }));
+    workup.acceptable.forEach((entry) => data.workup.push({ label: entry.nom, text: entry.resultat, kind: "ok" }));
+    workup.useless.forEach((entry) => data.workup.push({ label: entry.nom, text: entry.resultat || "", kind: "useless" }));
+  }
+  return data;
+}
+
+function dossierRow(label, text, extraClass) {
+  const row = el("div", "dos-row" + (extraClass ? " " + extraClass : ""));
+  row.append(el("span", "dos-label", label), el("span", "dos-value", text));
+  return row;
+}
+
+function dossierSection(number, title, count) {
+  const section = el("section", "dos-section");
+  const head = el("h3", "dos-section-head");
+  head.append(el("span", "dos-num", number + "."), el("span", "dos-title", title));
+  if (count !== undefined) head.append(el("span", "dos-count", String(count)));
+  section.append(head);
+  return section;
+}
+
+function closeDossier() {
+  const open = document.querySelector(".dossier-overlay");
+  if (open) open.remove();
+  if (document.body) document.body.classList.remove("no-scroll");
+}
+
+function openDossier() {
+  if (!state.caseData || !state.run) return;
+  closeDossier();
+  const ui = state.ui;
+  const labels = ui.dossier;
+  const data = collectDossier();
+  const patient = data.patient;
+
+  const overlay = el("div", "dossier-overlay");
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", labels.titre);
+  overlay.addEventListener("click", (event) => { if (event.target === overlay) closeDossier(); });
+  const paper = el("div", "dossier-paper");
+
+  const head = el("header", "dos-head");
+  const badge = el("span", "dos-badge");
+  badge.append(iconSvg(DOSSIER_ICON, 26));
+  const titles = el("div", "dos-titles");
+  titles.append(el("span", "dos-kicker", labels.titre), el("h2", "dos-name", patient.identite || labels.patientDefaut));
+  head.append(badge, titles);
+  paper.append(head);
+
+  const meta = el("div", "dos-meta");
+  [[labels.meta.lieu, data.intro.lieu], [labels.meta.motif, data.intro.motifConsultation], [labels.meta.score, state.score + "/" + MAX_SCORE]].forEach(([label, value]) => {
+    if (!value) return;
+    const cell = el("div", "dos-meta-cell");
+    cell.append(el("span", "dos-label", label), el("span", "dos-meta-value", String(value)));
+    meta.append(cell);
+  });
+  paper.append(meta);
+
+  // I. Identity and context
+  const identity = dossierSection("I", labels.sections.identite);
+  if (patient.identite) identity.append(dossierRow(labels.libelles.identite, patient.identite));
+  if (patient.provenance) identity.append(dossierRow(labels.libelles.provenance, patient.provenance));
+  if (patient.antecedents) identity.append(dossierRow(labels.libelles.antecedents, patient.antecedents));
+  if (data.intro.contexte) identity.append(dossierRow(labels.libelles.contexte, data.intro.contexte));
+  paper.append(identity);
+
+  // II. Dominant symptoms
+  const symptoms = dossierSection("II", labels.sections.symptomes);
+  if (data.intro.motifConsultation) symptoms.append(dossierRow(labels.libelles.motif, data.intro.motifConsultation, "strong"));
+  data.symptoms.forEach((text) => symptoms.append(el("p", "dos-bullet", text)));
+  if (data.symptoms.length === 0) symptoms.append(el("p", "dos-empty", labels.vide.symptomes));
+  paper.append(symptoms);
+
+  // III. History
+  const anamnesis = dossierSection("III", labels.sections.anamnese, data.anamnesis.reduce((n, group) => n + group.rows.length, 0));
+  data.anamnesis.forEach((group) => {
+    anamnesis.append(el("h4", "dos-sub", group.titre));
+    group.rows.forEach((row) => anamnesis.append(dossierRow(row.label, row.text)));
+  });
+  if (data.anamnesis.length === 0) anamnesis.append(el("p", "dos-empty", labels.vide.anamnese));
+  paper.append(anamnesis);
+
+  // IV. Physical exam (vitals + findings)
+  const exam = dossierSection("IV", labels.sections.examen, data.exam.reduce((n, group) => n + group.rows.length, 0));
+  const vitals = el("div", "dos-vitals");
+  Object.entries(getVitals()).forEach(([key, value]) => {
+    const cell = el("div", "dos-vital");
+    cell.append(el("span", "dos-label", ui.libellesConstantes[key] || key), el("span", "dos-vital-value", String(value)));
+    vitals.append(cell);
+  });
+  exam.append(vitals);
+  data.exam.forEach((group) => {
+    exam.append(el("h4", "dos-sub", group.titre));
+    group.rows.forEach((row) => exam.append(dossierRow(row.label, row.text)));
+  });
+  if (data.exam.length === 0) exam.append(el("p", "dos-empty", labels.vide.examen));
+  paper.append(exam);
+
+  // V. Work-up
+  const workup = dossierSection("V", labels.sections.bilan, data.workup.length);
+  data.workup.forEach((row) => {
+    const line = dossierRow(row.label, row.text || labels.libelles.inutile, row.kind === "useless" ? "muted" : "");
+    workup.append(line);
+  });
+  if (data.workup.length === 0) workup.append(el("p", "dos-empty", labels.vide.bilan));
+  paper.append(workup);
+
+  const close = el("button", "btn dos-close", labels.fermer);
+  close.type = "button";
+  close.addEventListener("click", closeDossier);
+  paper.append(close);
+  overlay.append(paper);
+  document.body.append(overlay);
+  document.body.classList.add("no-scroll");
+  close.focus({ preventScroll: true });
+}
+
 function createShell(step, options) {
   const ui = state.ui;
   const stage = $("#stage");
@@ -1006,12 +1155,32 @@ function setupPhysicalExam(step, shell, host, onChange, onFind) {
   svg.setAttribute("viewBox", "0 0 200 300");
   svg.setAttribute("class", "body-svg");
   svg.setAttribute("aria-hidden", "true");
-  [["circle", { cx: 100, cy: 30, r: 26 }], ["rect", { x: 90, y: 54, width: 20, height: 14 }],
-    ["rect", { x: 48, y: 64, width: 104, height: 134, rx: 28 }], ["rect", { x: 6, y: 70, width: 34, height: 128, rx: 17 }],
-    ["rect", { x: 160, y: 70, width: 34, height: 128, rx: 17 }], ["rect", { x: 56, y: 198, width: 40, height: 100, rx: 18 }],
-    ["rect", { x: 104, y: 198, width: 40, height: 100, rx: 18 }]].forEach(([tag, attrs]) => {
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const gradient = document.createElementNS(SVG_NS, "linearGradient");
+  gradient.setAttribute("id", "bodyGrad");
+  gradient.setAttribute("x1", "0"); gradient.setAttribute("y1", "0"); gradient.setAttribute("x2", "0"); gradient.setAttribute("y2", "1");
+  [["0", "#5eead4", ".55"], ["1", "#14b8a6", ".25"]].forEach(([offset, color, opacity]) => {
+    const stop = document.createElementNS(SVG_NS, "stop");
+    stop.setAttribute("offset", offset); stop.setAttribute("stop-color", color); stop.setAttribute("stop-opacity", opacity);
+    gradient.append(stop);
+  });
+  defs.append(gradient);
+  svg.append(defs);
+  const shapes = [
+    ["body", "ellipse", { cx: 100, cy: 31, rx: 23, ry: 28 }], ["body", "rect", { x: 91, y: 54, width: 18, height: 16, rx: 6 }],
+    ["body", "rect", { x: 48, y: 64, width: 104, height: 134, rx: 30 }], ["body", "rect", { x: 6, y: 70, width: 34, height: 128, rx: 17 }],
+    ["body", "rect", { x: 160, y: 70, width: 34, height: 128, rx: 17 }], ["body", "rect", { x: 56, y: 198, width: 40, height: 100, rx: 19 }],
+    ["body", "rect", { x: 104, y: 198, width: 40, height: 100, rx: 19 }],
+    ["lung", "path", { d: "M92 80C78 78 62 92 62 120C62 138 70 146 80 144C88 142 92 130 92 110Z" }],
+    ["lung", "path", { d: "M108 80C122 78 138 92 138 120C138 138 130 146 120 144C112 142 108 130 108 110Z" }],
+    ["heart", "path", { d: "M100 120C94 109 82 113 86 125C88 133 100 141 100 141C100 141 112 133 114 125C118 113 106 109 100 120Z" }],
+    ["gut", "ellipse", { cx: 100, cy: 172, rx: 30, ry: 17 }],
+    ["eye", "ellipse", { cx: 91, cy: 28, rx: 4, ry: 1.8 }], ["eye", "ellipse", { cx: 109, cy: 28, rx: 4, ry: 1.8 }]
+  ];
+  shapes.forEach(([kind, tag, attrs]) => {
     const shape = document.createElementNS(SVG_NS, tag);
     Object.keys(attrs).forEach((name) => shape.setAttribute(name, String(attrs[name])));
+    shape.setAttribute("class", "bs-" + kind);
     svg.append(shape);
   });
   map.append(svg);
@@ -1032,16 +1201,20 @@ function setupPhysicalExam(step, shell, host, onChange, onFind) {
     container.append(button);
   }
   config.zones.forEach((zone) => zone.boites.forEach((spot) => addZoneButton(zone, spot, map)));
-  box.append(map);
+  const stage = el("div", "body-stage");
+  stage.append(map);
+  box.append(stage);
 
+  let generalRow = null;
   const generalZone = config.zones.find((zone) => zone.boites.length === 0);
   if (generalZone) {
     const wide = el("div", "zone-general-row");
     addZoneButton(generalZone, { nom: config.zoneGenerale }, wide);
     wide.querySelector("button").textContent = config.zoneGenerale;
     wide.querySelector("button").className = "zone-btn zone-general";
-    box.append(wide);
+    generalRow = wide;
   }
+  if (generalRow) stage.append(generalRow);
 
   const result = el("div", "exam-result");
   result.setAttribute("aria-live", "polite");
@@ -1366,8 +1539,9 @@ function renderExamination(step) {
   });
 
   // The patient file: one feed holding every finding and every result, in order.
-  const fileTitle = el("h2", "section-title exam-file-title", labels.dossierTitre);
-  const empty = el("p", "exam-feed-empty", labels.dossierVide);
+  const fileCard = el("button", "dossier-card");
+  fileCard.type = "button";
+  fileCard.addEventListener("click", openDossier);
   const feed = shell.chat;
   feed.classList.add("exam-feed");
 
@@ -1384,12 +1558,34 @@ function renderExamination(step) {
   sheet.append(tabs, panelClinique, panelBilan);
   const openButton = el("button", "btn btn-blue exam-open");
   openButton.type = "button";
-  dock.append(sheet, openButton);
-  wrapper.append(fileTitle, empty, feed, dock);
+  dock.append(sheet, openButton, shell.actions);
+  wrapper.append(fileCard, feed, dock);
 
   const form = shell.card.querySelector(".form");
   let physical = null;
   let workup = null;
+
+  function renderFileCard() {
+    const card = ui.dossier.carte;
+    const data = collectDossier();
+    const count = (groups) => groups.reduce((n, group) => n + group.rows.length, 0);
+    fileCard.innerHTML = "";
+    const badge = el("span", "dos-badge");
+    badge.append(iconSvg(DOSSIER_ICON, 24));
+    const text = el("span", "dossier-card-text");
+    text.append(el("strong", null, card.titre));
+    const last = data.workup.length ? data.workup[data.workup.length - 1] : null;
+    const lastExam = data.exam.length ? data.exam[data.exam.length - 1] : null;
+    const lastLine = last ? last.label + " : " + last.text : lastExam ? lastExam.rows[lastExam.rows.length - 1].label : "";
+    text.append(el("span", "dossier-card-sub", lastLine ? card.derniere + " · " + lastLine : card.vide));
+    const chips = el("span", "dossier-chips");
+    [[card.anamnese, count(data.anamnesis)], [card.examen, count(data.exam)], [card.bilan, data.workup.length]].forEach(([name, n]) => {
+      const chip = el("span", "dossier-chip" + (n ? " on" : ""), name + " " + n);
+      chips.append(chip);
+    });
+    text.append(chips);
+    fileCard.append(badge, text, el("span", "dossier-card-open", card.ouvrir + " ›"));
+  }
 
   function refresh(kind) {
     if (kind === "sent") sheetOpen = false;
@@ -1408,7 +1604,7 @@ function renderExamination(step) {
     openButton.textContent = sheetOpen ? labels.boutonFermer : labels.boutonOuvrir;
     openButton.classList.toggle("open", sheetOpen);
     openButton.setAttribute("aria-expanded", sheetOpen ? "true" : "false");
-    empty.hidden = feed.children.length > 0;
+    renderFileCard();
     const last = feed.children[feed.children.length - 1];
     if (kind === "sent" && last && last.scrollIntoView) last.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
@@ -1428,11 +1624,24 @@ function renderExamination(step) {
   refresh();
 
   // Leaving: the physical exam rule applies (no key maneuver = penalty, shown once).
+  let warnedMissing = false;
+  shell.showNext();
+  shell.nextButton.textContent = labels.boutonContinuer;
   shell.onNext = () => {
-    if (physical.leave()) return true;
-    activeTab = "clinique";
-    refresh();
-    return false;
+    if (!physical.leave()) {
+      activeTab = "clinique";
+      refresh();
+      return false;
+    }
+    // Leaving without the priority work-up is allowed after one warning.
+    if (!workup.isComplete() && !warnedMissing) {
+      warnedMissing = true;
+      shell.addMessage("warn", labels.bilanIncomplet);
+      refresh("sent");
+      return false;
+    }
+    closeDossier();
+    return true;
   };
 }
 
@@ -2169,6 +2378,8 @@ function goToStep(index) {
 }
 
 function startCase() {
+  const dossierButton = $("#dossierButton");
+  if (dossierButton) dossierButton.hidden = false;
   state.score = state.caseData.scoreInitial;
   state.run = createRun();
   $("#topbar").hidden = false;
@@ -2270,6 +2481,14 @@ async function init() {
   menuButton.setAttribute("aria-label", state.ui.accueil.retourMenu);
   menuButton.title = state.ui.accueil.retourMenu;
   menuButton.addEventListener("click", leaveToMenu);
+  const dossierButton = $("#dossierButton");
+  if (dossierButton) {
+    dossierButton.append(iconSvg(DOSSIER_ICON, 20));
+    dossierButton.setAttribute("aria-label", state.ui.dossier.bouton);
+    dossierButton.title = state.ui.dossier.bouton;
+    dossierButton.addEventListener("click", openDossier);
+  }
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDossier(); });
 
   // A direct link (?cas=id) opens the case; otherwise show the home menu.
   const requestedId = new URLSearchParams(window.location.search).get("cas");

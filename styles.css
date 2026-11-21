@@ -460,8 +460,7 @@ body {
   position: relative; width: 200px; height: 300px; margin: 4px auto;
 }
 .body-svg { position: absolute; inset: 0; width: 200px; height: 300px; }
-.body-svg circle, .body-svg rect { fill: var(--blue-light); stroke: #93c5fd; stroke-width: 2.5; }
-:root[data-theme="dark"] .body-svg circle, :root[data-theme="dark"] .body-svg rect { stroke: #2b4a8a; }
+
 .zone-btn {
   position: absolute; padding: 0; border-radius: 16px; cursor: pointer; font-family: inherit;
   border: 2px dashed #60a5fa; background: rgba(255, 255, 255, .35);
@@ -684,3 +683,113 @@ body {
 .ring-arc { stroke: #10B981; }
 .score-ring-wrap .big { position: relative; font-size: 34px; }
 @media (prefers-reduced-motion: reduce) { .card.enter, .exam-sheet, .exam-feed .msg { animation: none; } }
+
+
+/* ---------- Mannequin: glowing scan look ---------- */
+.body-stage {
+  padding: 18px 0 14px; border-radius: 22px; border: 1px solid #1e3a5f;
+  background: radial-gradient(ellipse at 50% 38%, #14305a 0%, #0a1528 62%, #070b14 100%);
+  box-shadow: inset 0 0 40px rgba(45, 212, 191, .12), 0 6px 18px rgba(7, 11, 20, .25);
+}
+.body-stage .body-map { margin: 0 auto; }
+.bs-body { fill: url(#bodyGrad); stroke: #bef264; stroke-width: 2.2; filter: drop-shadow(0 0 5px rgba(190, 242, 100, .55)); }
+.bs-lung { fill: rgba(94, 234, 212, .22); stroke: #5eead4; stroke-width: 1.4; }
+.bs-heart { fill: rgba(251, 146, 60, .45); stroke: #fdba74; stroke-width: 1.4; filter: drop-shadow(0 0 4px rgba(251, 146, 60, .7)); animation: heartGlow 1.6s ease-in-out infinite; }
+.bs-gut { fill: none; stroke: #5eead4; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: .7; }
+.bs-eye { fill: #99f6e4; }
+@keyframes heartGlow { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+.body-stage .zone-btn { border: 1.5px dashed rgba(190, 242, 100, .5); background: transparent; }
+.body-stage .zone-btn:hover { background: rgba(190, 242, 100, .1); }
+.body-stage .zone-btn.active { border: 2px solid #facc15; background: rgba(250, 204, 21, .16); box-shadow: 0 0 14px rgba(250, 204, 21, .45); }
+.body-stage .zone-general-row { margin-top: 12px; }
+.body-stage .zone-general { color: #bef264; border-color: rgba(190, 242, 100, .55); background: transparent; padding: 8px 18px; font-weight: 800; }
+.body-stage .zone-general.active { color: #fde68a; }
+@media (prefers-reduced-motion: reduce) { .bs-heart { animation: none; } }
+
+/* ---------- Patient file: card on the exam page ---------- */
+.dossier-card {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin: 0 0 10px; text-align: left;
+  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 18px; background: var(--surface); color: var(--ink);
+  font: inherit; cursor: pointer; flex-wrap: wrap;
+}
+.dossier-card:hover { border-color: var(--blue); }
+.dossier-card:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.dossier-card-text { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dossier-card-sub { font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.35; }
+.dossier-card-open { font-weight: 900; font-size: 13px; color: var(--blue-dark); white-space: nowrap; }
+.dossier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.dossier-chip { font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--surface-3); color: var(--muted); }
+.dossier-chip.on { background: #d1fae5; color: #047857; }
+:root[data-theme="dark"] .dossier-chip.on { background: #064e3b; color: #6ee7b7; }
+.exam-feed .msg-sim {
+  background: var(--surface); border: 2px solid var(--line); border-left: 6px solid #10b981; border-radius: 14px; color: var(--ink);
+}
+.exam-feed .msg-sim .msg-title { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #047857; }
+:root[data-theme="dark"] .exam-feed .msg-sim .msg-title { color: #6ee7b7; }
+.exam-dock .actions { margin: 0; }
+
+/* ---------- Patient file: the paper document ---------- */
+body.no-scroll { overflow: hidden; }
+.dossier-btn { color: var(--blue-dark); }
+.dossier-overlay {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(7, 11, 20, .62); animation: fadeIn .2s ease both;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.dossier-paper {
+  --paper: #fbf8f1; --paper-ink: #17202e; --paper-muted: #5b6573; --paper-line: #d6d0c2; --paper-band: #ece7da;
+  position: relative; width: min(100%, 600px); max-height: 94vh; overflow-y: auto; padding: 22px 0 18px;
+  border-radius: 26px 26px 0 0; color: var(--paper-ink);
+  background:
+    linear-gradient(90deg, transparent 31px, rgba(220, 38, 38, .3) 31px, rgba(220, 38, 38, .3) 32px, transparent 32px),
+    var(--paper);
+  animation: sheetUp .32s cubic-bezier(.2, .8, .2, 1) both;
+}
+:root[data-theme="dark"] .dossier-paper {
+  --paper: #1a2030; --paper-ink: #e8edf5; --paper-muted: #9aa6b8; --paper-line: #323b50; --paper-band: #252d42;
+}
+.dos-head { display: flex; align-items: center; gap: 14px; padding: 0 20px 14px 46px; }
+.dos-badge {
+  flex: none; width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; background: #0f172a; color: #fff;
+}
+.dos-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dos-kicker { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--paper-muted); }
+.dos-name { margin: 0; font-size: 21px; line-height: 1.15; font-weight: 900; letter-spacing: .02em; text-transform: uppercase; }
+.dos-meta {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--paper-line); border-bottom: 3px solid #1f7a5a;
+  background: var(--paper-band); padding-left: 32px;
+}
+.dos-meta-cell { padding: 10px 10px 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dos-meta-value { font-size: 13px; font-weight: 800; line-height: 1.25; }
+.dos-label { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--paper-muted); }
+.dos-section { margin-top: 0; border-bottom: 1px solid var(--paper-line); padding-bottom: 8px; }
+.dos-section-head {
+  display: flex; align-items: center; gap: 8px; margin: 0; padding: 11px 20px 11px 46px; background: var(--paper-band);
+  border-top: 1px solid var(--paper-line); border-bottom: 1px solid var(--paper-line); font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
+}
+.dos-num { font-weight: 900; }
+.dos-title { font-weight: 900; flex: 1; }
+.dos-count { font-size: 12px; font-weight: 900; padding: 1px 9px; border-radius: 999px; background: #1f7a5a; color: #fff; }
+.dos-sub { margin: 12px 20px 2px 46px; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: #1f7a5a; }
+:root[data-theme="dark"] .dos-sub { color: #6ee7b7; }
+.dos-row { display: flex; flex-direction: column; gap: 1px; padding: 8px 20px 8px 46px; border-bottom: 1px solid rgba(120, 130, 150, .18); }
+.dos-value { font-size: 15px; font-weight: 700; line-height: 1.4; }
+.dos-row.strong .dos-value { font-size: 17px; font-weight: 900; }
+.dos-row.muted .dos-value { color: var(--paper-muted); }
+.dos-bullet { margin: 0; padding: 6px 20px 6px 46px; font-weight: 700; font-size: 15px; line-height: 1.4; position: relative; }
+.dos-bullet::before { content: ""; position: absolute; left: 34px; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: #1f7a5a; }
+.dos-empty { margin: 0; padding: 10px 20px 8px 46px; font-weight: 700; font-size: 14px; color: var(--paper-muted); font-style: italic; }
+.dos-vitals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 8px 12px 4px 38px; }
+.dos-vital { padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; }
+.dos-vital-value { font-size: 15px; font-weight: 900; }
+.dos-close {
+  display: block; width: calc(100% - 52px); margin: 18px 20px 4px 32px; min-height: 54px; border: 0; border-radius: 16px;
+  background: #0f172a; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; font-family: inherit;
+}
+:root[data-theme="dark"] .dos-close { background: #e8edf5; color: #0f172a; }
+@media (min-width: 640px) { .dossier-overlay { align-items: center; } .dossier-paper { border-radius: 26px; } }
+@media (prefers-reduced-motion: reduce) { .dossier-overlay, .dossier-paper { animation: none; } }
+
+.exam-dock .actions { display: flex; gap: 8px; flex-wrap: nowrap; }
+.exam-dock .actions .btn { flex: 1 1 0; min-height: 46px; padding: 0 10px; font-size: 15px; }
+.exam-sheet { max-height: 54vh; }
